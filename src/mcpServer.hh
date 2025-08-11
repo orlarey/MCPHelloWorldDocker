@@ -69,20 +69,10 @@ private:
     }
 
     // Call the tool with JSON arguments
-    std::string toolResponse =
-        fRegisteredTools[toolName]->call(arguments.dump());
+    json toolResponse = fRegisteredTools[toolName]->call(arguments.dump());
 
-    // Parse the tool response as JSON
-    json responseJson;
-    try {
-      responseJson = json::parse(toolResponse);
-    } catch (const json::parse_error &e) {
-      // If tool returns plain text, wrap it in proper format
-      responseJson = toolResponse;
-    }
-
-    json result = {
-        {"content", json::array({{{"type", "text"}, {"text", responseJson}}})}};
+    // Tool returns MCP content array directly
+    json result = {{"content", toolResponse}};
 
     sendResponse(id, result);
   }

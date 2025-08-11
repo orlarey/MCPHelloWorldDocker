@@ -30,7 +30,7 @@ public:
     return description.dump();
   }
 
-  std::string call(const std::string &args) override {
+  json call(const std::string &args) override {
     try {
       // Parse the JSON arguments
       json arguments = json::parse(args);
@@ -41,12 +41,12 @@ public:
       // Create the greeting message
       std::string greeting = "Hello " + userName + "!";
 
-      // Return as JSON string
-      return json(greeting).dump();
+      // Return as MCP content array
+      return json::array({{{"type", "text"}, {"text", greeting}}});
 
     } catch (const json::parse_error &e) {
       // Handle parse error
-      return json("Error: Invalid arguments").dump();
+      return json::array({{{"type", "text"}, {"text", "Error: Invalid arguments"}}});
     }
   }
 };

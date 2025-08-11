@@ -8,6 +8,10 @@
 #include <string>
 #include <unordered_map>
 
+#include "json.hpp"
+
+using json = nlohmann::json;
+
 // ============================================================================
 // MCP Tool Interface
 // ============================================================================
@@ -38,7 +42,7 @@ public:
   /**
    * @brief Execute the tool with given arguments
    * @param arguments JSON string containing the tool's input parameters
-   * @return JSON string containing the tool's response
+   * @return JSON array containing MCP-structured content items
    */
-  virtual std::string call(const std::string &arguments) = 0;
+  virtual json call(const std::string &arguments) = 0;
 };
