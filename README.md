@@ -86,6 +86,33 @@ All content types support optional annotations for metadata like audience and pr
 
 *For complete content type specifications, see: https://modelcontextprotocol.io/specification/2025-06-18/server/tools*
 
+### JSON-RPC 2.0 Foundation
+
+The Model Context Protocol is built on top of JSON-RPC 2.0, which provides the message structure and communication semantics. Understanding JSON-RPC helps interpret the message exchanges shown above:
+
+**Request Messages** contain:
+- `jsonrpc`: Always "2.0" to indicate the protocol version
+- `method`: The name of the method to invoke (e.g., "initialize", "tools/list", "tools/call")
+- `params`: Parameters for the method call (optional)
+- `id`: Unique identifier for request/response correlation
+
+**Response Messages** contain:
+- `jsonrpc`: Always "2.0"
+- `id`: Matching the request ID for correlation
+- `result`: The successful result data, OR
+- `error`: Error information with code and message
+
+**Notification Messages** (like "notifications/initialized") contain:
+- `jsonrpc`: Always "2.0"
+- `method`: The notification method name
+- No `id` field (notifications expect no response)
+
+**ID Correlation**: The `id` field is crucial for matching responses to requests in asynchronous communication. When a client sends a request with `"id": 0`, the server must respond with the same `"id": 0`. This allows the client to handle multiple concurrent requests and match each response to its corresponding request. IDs can be numbers, strings, or null, but must be unique for pending requests.
+
+This structure ensures reliable message correlation and proper error handling between the MCP client and server.
+
+For complete JSON-RPC 2.0 specification, see: https://www.jsonrpc.org/specification
+
 ## Project Structure
 
 ### Dependencies
