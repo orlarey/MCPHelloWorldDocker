@@ -135,7 +135,168 @@ The Model Context Protocol is built on top of JSON-RPC 2.0, which provides the m
 
 This triple-layer indirection provides complete abstraction - tools operate with simple inputs/outputs while benefiting from standardized transport and content formatting.
 
+**Visual Example of Protocol Layering:**
+
+```json
+// Tool Call Request - Protocol Layer Breakdown
+{
+  // 🔵 JSON-RPC 2.0 Layer (Transport & Correlation)
+  "jsonrpc": "2.0",           // Protocol version
+  "id": 4,                    // Request correlation ID
+  "method": "tools/call",     // Fixed JSON-RPC method name
+  
+  // 🟠 MCP Layer (Semantic & Routing)
+  "params": {
+    "name": "HelloTool",      // MCP tool identifier
+    "arguments": {
+      // 🟢 Tool Layer (Application Logic)
+      "value": "Yann"         // Tool-specific parameter
+    }
+  }
+}
+
+// Tool Call Response - Protocol Layer Breakdown
+{
+  // 🔵 JSON-RPC 2.0 Layer (Transport & Correlation)
+  "jsonrpc": "2.0",           // Protocol version
+  "id": 4,                    // Matching request ID
+  
+  // 🟠 MCP Layer (Content Standardization)
+  "result": {
+    "content": [{             // MCP content wrapper
+      "type": "text",         // MCP content type
+      "text": "Hello Yann!"   // 🟢 Tool output (wrapped)
+    }]
+  }
+}
+```
+
+```json
+// Tool Discovery Response - Protocol Layer Breakdown
+{
+  // 🔵 JSON-RPC 2.0 Layer (Transport & Correlation)
+  "jsonrpc": "2.0",
+  "id": 1,
+  
+  // 🟠 MCP Layer (Tool Registry & Schema Format)
+  "result": {
+    "tools": [{
+      // 🟢 Tool Layer (Tool Identity)
+      "name": "HelloTool",
+      "description": "A tool that greets users",
+      
+      // 🟠 MCP Layer (Parameter Description Standard)
+      "inputSchema": {           // MCP-defined way to describe parameters
+        "type": "object",        // JSON Schema format (MCP standard)
+        "properties": {
+          // 🟢 Tool Layer (Tool-specific Parameters)
+          "value": {             // Tool defines what it needs
+            "type": "string",
+            "description": "User name to greet"
+          }
+        },
+        "required": ["value"]
+      }
+      
+      // Note: outputSchema is optional in MCP spec
+      // When present, it describes the structure of tool results
+    }]
+  }
+}
+```
+
+**Key Insight**: The `inputSchema` uses **MCP-standardized JSON Schema format** to describe **tool-specific parameters**. MCP defines HOW to describe parameters (JSON Schema), while tools define WHAT parameters they need.
+
+**Legend:**
+- 🔵 **JSON-RPC Layer**: Message structure, correlation, transport
+- 🟠 **MCP Layer**: Standardized formats, schemas, content types
+- 🟢 **Tool Layer**: Tool-specific logic, parameters, identity
+
 This layered approach separates concerns: JSON-RPC handles message structure and correlation, while MCP defines the application-level protocol semantics.
+
+### Protocol Grammar (BNF Notation)
+
+The following BNF grammars show how each protocol layer constrains and extends the previous one:
+
+**1. JSON-RPC 2.0 Layer (Transport Foundation)**
+```bnf
+<jsonrpc-message> ::= <jsonrpc-request> | <jsonrpc-response> | <jsonrpc-notification>
+
+<jsonrpc-request> ::= { jsonrpc: 2.0, method: <method-name>, params?: <params>, id: <id> }
+<jsonrpc-notification> ::= { jsonrpc: 2.0, method: <method-name>, params?: <params> }
+<jsonrpc-response> ::= { jsonrpc: 2.0, id: <id>, result: <result> }
+                     | { jsonrpc: 2.0, id: <id>, error: <error-object> }
+
+<error-object> ::= { code: <number>, message: <string> }
+<method-name> ::= <string>  // Generic - any string allowed
+<params> ::= <any-json>     // Generic - any JSON structure  
+<result> ::= <any-json>     // Generic - any JSON structure
+<id> ::= <number> | <string> | null
+```
+
+**2. MCP Layer (Constrains JSON-RPC)**
+```bnf
+// MCP constrains JSON-RPC method names to specific values
+<method-name> ::= <mcp-method>
+<mcp-method> ::= initialize | tools/list | tools/call | notifications/initialized
+
+// MCP constrains params structure based on method
+<params> ::= <mcp-params>
+<mcp-params> ::= <init-params> | <tools-list-params> | <tools-call-params> | <empty>
+
+<init-params> ::= { protocolVersion: <string>, capabilities: <object>, clientInfo: <object> }
+<tools-call-params> ::= { name: <tool-name>, arguments: <tool-arguments> }
+<tools-list-params> ::= {}
+<empty> ::= // notifications/initialized has no params
+
+// MCP constrains result structure based on method
+<result> ::= <mcp-result>
+<mcp-result> ::= <init-result> | <tools-list-result> | <tools-call-result>
+
+<init-result> ::= { protocolVersion: <string>, capabilities: <object>, serverInfo: <object> }
+<tools-call-result> ::= { content: [<content-item>*], isError?: <boolean> }
+<tools-list-result> ::= { tools: [<tool-schema>*] }
+
+<content-item> ::= { type: <content-type> } & <content-data>
+<content-type> ::= text | image | audio | resource_link | resource
+<content-data> ::= { text: <string> }  // Simplified - each type has specific fields
+<tool-schema> ::= { name: <tool-name>, description: <string>, inputSchema: <json-schema> }
+```
+
+**3. HelloWorld Server Layer (Constrains MCP)**
+```bnf
+// Server constrains MCP tool names to specific implementations
+<tool-name> ::= <hello-tool-name>
+<hello-tool-name> ::= HelloTool
+
+// Server constrains MCP tool arguments to specific schemas
+<tool-arguments> ::= <hello-tool-arguments>
+<hello-tool-arguments> ::= { value: <string> }
+
+// Server constrains MCP tool schemas to specific definitions  
+<tool-schema> ::= <hello-tool-schema>
+<hello-tool-schema> ::= { name: HelloTool,
+                          description: "A tool that greets users",
+                          inputSchema: <hello-input-schema> }
+
+<hello-input-schema> ::= { type: object,
+                           properties: { value: { type: string, description: User name to greet } },
+                           required: [value, ...] }
+
+// Example: Multi-parameter tool schema
+<multi-param-schema> ::= { type: object,
+                           properties: { 
+                             name: { type: string, description: User name },
+                             age: { type: number, description: User age },
+                             greeting: { type: string, description: Greeting style, enum: [formal, casual, ...] }
+                           },
+                           required: [name, age, ...] }
+```
+
+**Key Insight**: Each layer **constrains** the more generic layer below it:
+- JSON-RPC allows any `method` → MCP restricts to specific methods
+- JSON-RPC allows any `params` → MCP defines structure per method  
+- MCP allows any `tool-name` → Server implements specific tools
 
 **Architecture References:**
 - MCP Architecture Overview: https://modelcontextprotocol.io/docs/learn/architecture
