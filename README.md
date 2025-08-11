@@ -109,9 +109,38 @@ The Model Context Protocol is built on top of JSON-RPC 2.0, which provides the m
 
 **ID Correlation**: The `id` field is crucial for matching responses to requests in asynchronous communication. When a client sends a request with `"id": 0`, the server must respond with the same `"id": 0`. This allows the client to handle multiple concurrent requests and match each response to its corresponding request. IDs can be numbers, strings, or null, but must be unique for pending requests.
 
-This structure ensures reliable message correlation and proper error handling between the MCP client and server.
+**MCP over JSON-RPC Encapsulation**: The MCP protocol is fully encapsulated within JSON-RPC 2.0 following these principles:
 
-For complete JSON-RPC 2.0 specification, see: https://www.jsonrpc.org/specification
+- **Method Namespace**: MCP defines specific method names (e.g., "initialize", "tools/list", "tools/call") that map to MCP operations
+- **Parameter Structure**: The `params` field contains MCP-specific data structures for each method
+- **Result Format**: Response `result` fields follow MCP-defined schemas for each operation type
+- **Error Codes**: MCP uses standard JSON-RPC error codes (-32601 for "Method not found", -32602 for "Invalid params", etc.)
+- **Transport Agnostic**: JSON-RPC provides the message format, while MCP defines the semantic meaning and data structures
+
+**Complete Indirection Pattern**: MCP uses a comprehensive indirection mechanism across all aspects:
+
+**1. Method Indirection:**
+- **JSON-RPC Level**: The method is always `"tools/call"` - a single, fixed JSON-RPC method
+- **MCP Level**: The actual tool to execute (`"HelloTool"`) is passed as a parameter in `params.name`
+
+**2. Parameter Indirection:**
+- **JSON-RPC Level**: The `params` contains MCP structure: `{"name": "HelloTool", "arguments": {...}}`
+- **Tool Level**: The actual tool parameters (`{"value": "Yann"}`) are nested within `params.arguments`
+- **Flow**: JSON-RPC params → MCP arguments → Tool-specific parameters
+
+**3. Result Indirection:**
+- **Tool Level**: Tool returns simple data (e.g., `"Hello Yann!"`)
+- **MCP Level**: Result is wrapped in MCP content structure: `{"content": [{"type": "text", "text": "Hello Yann!"}]}`
+- **JSON-RPC Level**: Final response follows JSON-RPC format: `{"jsonrpc": "2.0", "id": 4, "result": {...}}`
+
+This triple-layer indirection provides complete abstraction - tools operate with simple inputs/outputs while benefiting from standardized transport and content formatting.
+
+This layered approach separates concerns: JSON-RPC handles message structure and correlation, while MCP defines the application-level protocol semantics.
+
+**Architecture References:**
+- MCP Architecture Overview: https://modelcontextprotocol.io/docs/learn/architecture
+- Protocol Mechanics: https://pradeepl.com/blog/model-context-protocol/mcp-protocol-mechanics-and-architecture/
+- JSON-RPC 2.0 specification: https://www.jsonrpc.org/specification
 
 ## Project Structure
 
