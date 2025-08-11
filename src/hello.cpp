@@ -100,8 +100,17 @@ std::optional<json> encodeFile(const std::string &filepath) {
       mimeType = "application/pdf";
   }
 
-  // Create JSON response
-  json result = {{"data", encoded}, {"mimeType", mimeType}};
+  // Create JSON response - use text for text files, base64 for binary
+  json result = {{"mimeType", mimeType}};
+  
+  if (mimeType.substr(0, 5) == "text/" || mimeType == "application/json") {
+    // For text files, return as plain text
+    std::string textContent(buffer.begin(), buffer.end());
+    result["text"] = textContent;
+  } else {
+    // For binary files, return as base64
+    result["data"] = encoded;
+  }
 
   return result;
 }
@@ -191,14 +200,11 @@ public:
       }
 
       // Return as MCP content array with resource
-      return json::array(
-          {{{"type", "resource"},
-            {"resource",
-             {
-                 {"uri", "file://src/hello.cpp"},
-                 {"mimeType", fileData->at("mimeType")},
-                 {"text", fileData->at("data")} // Base64 encoded content
-             }}}});
+      // Merge encodeFile result with URI
+      json resource = *fileData;
+      resource["uri"] = "file://src/hello.cpp";
+      
+      return json::array({{{"type", "resource"}, {"resource", resource}}});
 
     } catch (const json::parse_error &e) {
       return json::array(
