@@ -182,7 +182,7 @@ To use this server with an MCP client, add the following configuration:
   "mcpServers": {
     "dockermcphello": {
       "command": "docker",
-      "args": ["run", "-i", "-rm", "mcp-hello-app"]
+      "args": ["run", "-i", "--rm", "mcp-hello-app"]
     }
   }
 }
